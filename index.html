@@ -794,9 +794,9 @@
             {activeTab === 'settings' && <SettingsView />}
           </main>
 
-          {/* BARRE FLOTTANTE RESTAURÉE */}
-          <div className="absolute bottom-0 w-full z-[100] px-6 pointer-events-none" style={{ paddingBottom: 'calc(20px + env(safe-area-inset-bottom))' }}>
-            <div className="bg-white/95 backdrop-blur-xl border border-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-[2rem] px-6 py-4 flex justify-between items-center pointer-events-auto relative">
+          {/* BARRE COLLÉE AU BAS */}
+          <div className="absolute bottom-0 w-full z-[100]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <div className="bg-white/95 backdrop-blur-xl border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-8 py-4 flex justify-between items-center relative">
               <button onClick={() => setActiveTab('dashboard')} className={`transition-all duration-300 ${activeTab === 'dashboard' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
                 <Icon name="LayoutGrid" className="text-2xl" />
               </button>
@@ -804,8 +804,8 @@
                 <Icon name="Sparkles" className="text-2xl" />
               </button>
               
-              {/* Le fameux Bouton PLUS */}
-              <button onClick={() => { setActiveTab('add'); setViewDate(new Date()); }} className="bg-slate-900 text-white rounded-full p-4 shadow-xl hover:bg-slate-800 transition-transform active:scale-95 -mt-12 border-[6px] border-[#F7F7F9] flex items-center justify-center relative z-[150]">
+              {/* Le fameux Bouton PLUS surélevé */}
+              <button onClick={() => { setActiveTab('add'); setViewDate(new Date()); }} className="bg-slate-900 text-white rounded-full p-4 shadow-xl hover:bg-slate-800 transition-transform active:scale-95 -mt-12 border-[6px] border-white flex items-center justify-center relative z-[150]">
                 <Icon name="Plus" className="text-xl" />
               </button>
 
