@@ -2,54 +2,52 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <!-- Balise vitale pour iOS : force le plein écran et prend en compte "l'encoche" (viewport-fit=cover) -->
+  <!-- Balises iOS STRICTES pour forcer le plein écran -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Budget</title>
-  
-  <!-- Balises magiques d'Apple pour masquer Safari -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Budget">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#F7F7F9">
   
-  <!-- Faux manifeste pour forcer le comportement d'une application autonome -->
-  <link rel="manifest" href='data:application/manifest+json,{"name":"Mon Budget","short_name":"Budget","display":"standalone","background_color":"#F7F7F9","theme_color":"#F7F7F9"}'>
+  <!-- Fausse icône pour forcer iOS à reconnaître l'application -->
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Budget","short_name":"Budget","display":"standalone","start_url":"/","background_color":"#F7F7F9","theme_color":"#F7F7F9"}'>
 
-  <!-- Tailwind CSS -->
+  <title>Budget</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- FontAwesome pour les icônes (100% stable) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <!-- React & Babel -->
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <style>
-    /* Empêche le rebond élastique de toute la page (comportement iOS) */
+    /* Empêche le rebond élastique de Safari */
     html, body {
-        overscroll-behavior-y: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
         overflow: hidden;
+        overscroll-behavior-y: none;
+        background-color: #F7F7F9;
     }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-[#F7F7F9] text-slate-900 selection:bg-indigo-100 antialiased h-[100dvh] w-full flex justify-center overflow-hidden">
-  <div id="root" class="w-full max-w-md relative h-full flex flex-col"></div>
+<body class="text-slate-900 selection:bg-indigo-100 antialiased">
+  <div id="root" class="w-full h-[100dvh] flex justify-center"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
 
     const iconMap = {
-      'Plus': 'plus', 'LayoutGrid': 'table-cells-large', 'Sparkles': 'wand-magic-sparkles',
+      'LayoutGrid': 'table-cells-large', 'Sparkles': 'wand-magic-sparkles',
       'Check': 'check', 'AlertCircle': 'circle-exclamation', 'TrendingUp': 'arrow-trend-up',
-      'Download': 'download', 'Save': 'floppy-disk', 'List': 'list', 'DollarSign': 'dollar-sign',
-      'Lightbulb': 'lightbulb', 'ChevronLeft': 'chevron-left', 'ChevronRight': 'chevron-right',
-      'Trash2': 'trash-can', 'RefreshCw': 'rotate', 'Shield': 'shield', 'Target': 'bullseye',
-      'Edit2': 'pen-to-square', 'X': 'xmark', 'Zap': 'bolt', 'MoreHorizontal': 'ellipsis',
+      'Download': 'download', 'Save': 'floppy-disk', 'DollarSign': 'dollar-sign',
+      'ChevronLeft': 'chevron-left', 'ChevronRight': 'chevron-right',
+      'Trash2': 'trash-can', 'Target': 'bullseye', 'Edit2': 'pen-to-square', 
+      'X': 'xmark', 'Zap': 'bolt', 'MoreHorizontal': 'ellipsis',
       'Tag': 'tag', 'Banknote': 'money-bill-wave', 'ArrowRightLeft': 'right-left',
       'ShieldCheck': 'shield-halved', 'ArrowUpRight': 'arrow-up-right-from-square', 'Split': 'arrows-split-up-and-left'
     };
@@ -240,7 +238,7 @@
 
         return (
           <div className="h-full flex flex-col animate-in fade-in duration-500">
-            <div className="pt-10 px-6 pb-4 shrink-0">
+            <div className="pt-8 px-6 pb-4 shrink-0">
               <div className="bg-slate-200/50 p-1 rounded-2xl flex relative">
                 <button onClick={() => setMode('expense')} className={`flex-1 py-2.5 rounded-xl text-[11px] uppercase tracking-wider font-bold z-10 transition-colors ${mode === 'expense' ? 'text-slate-900 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-700'}`}>Dépense</button>
                 <button onClick={() => setMode('payday')} className={`flex-1 py-2.5 rounded-xl text-[11px] uppercase tracking-wider font-bold z-10 transition-colors ${mode === 'payday' ? 'text-emerald-700 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-700'}`}>Paie</button>
@@ -249,7 +247,7 @@
             </div>
 
             {mode === 'expense' && (
-              <form onSubmit={handleExpenseSubmit} className="flex-1 flex flex-col px-6 pb-32 animate-in fade-in hide-scrollbar overflow-y-auto">
+              <form onSubmit={handleExpenseSubmit} className="flex-1 flex flex-col px-6 pb-6 animate-in fade-in hide-scrollbar overflow-y-auto">
                 <div className="flex justify-center items-center mb-8 shrink-0">
                   <span className="text-3xl text-slate-300 font-light mr-1">$</span>
                   <input type="number" step="0.01" inputMode="decimal" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} className="w-full text-6xl font-light text-slate-800 bg-transparent outline-none text-center placeholder-slate-200" placeholder="0.00" required />
@@ -284,7 +282,7 @@
             )}
 
             {mode === 'payday' && (
-              <form onSubmit={handlePaydaySubmit} className="flex-1 flex flex-col pb-32 animate-in fade-in hide-scrollbar overflow-y-auto">
+              <form onSubmit={handlePaydaySubmit} className="flex-1 flex flex-col pb-6 animate-in fade-in hide-scrollbar overflow-y-auto">
                 <div className="px-6 mb-6 shrink-0">
                    <div className="flex justify-center items-center mb-6">
                      <span className="text-3xl text-emerald-300 font-light mr-1">+$</span>
@@ -328,7 +326,7 @@
             )}
 
             {mode === 'fixed' && (
-              <div className="flex-1 flex flex-col px-6 pb-32 animate-in fade-in hide-scrollbar overflow-y-auto">
+              <div className="flex-1 flex flex-col px-6 pb-6 animate-in fade-in hide-scrollbar overflow-y-auto">
                 <h2 className="text-xl font-bold text-slate-900 mb-2">Checklist du mois</h2>
                 <p className="text-sm text-slate-500 mb-6">Passe tes abonnements et loyers en un clic.</p>
                 {fixedExpenses.length === 0 ? (
@@ -391,7 +389,7 @@
         const safeInvestTarget = Number(userGoals[investCatId]) || 25000;
 
         return (
-          <div className="px-6 pt-10 pb-36 animate-in fade-in duration-500 relative">
+          <div className="px-6 pt-8 pb-6 animate-in fade-in duration-500 relative">
             {editingTx && (
               <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center sm:p-4">
                 <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 pb-12 animate-in shadow-2xl">
@@ -555,7 +553,7 @@
 
       const CoachView = () => {
         return (
-          <div className="px-6 pt-10 pb-40 animate-in fade-in duration-500">
+          <div className="px-6 pt-10 pb-10 animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center">Coach <Icon name="Sparkles" className="ml-2 text-indigo-500" /></h1>
             </div>
@@ -630,7 +628,7 @@
 
         if (isEditingCategories) {
           return (
-            <div className="px-6 pt-10 pb-36 animate-in duration-300">
+            <div className="px-6 pt-10 pb-10 animate-in duration-300">
                <div className="flex items-center mb-8">
                  <button onClick={() => setIsEditingCategories(false)} className="p-2 mr-2 bg-slate-200 rounded-full active:scale-95"><Icon name="ChevronLeft" className="text-lg"/></button>
                  <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Mes Enveloppes</h1>
@@ -679,7 +677,7 @@
         }
 
         return (
-          <div className="px-6 pt-10 pb-36 animate-in fade-in duration-500">
+          <div className="px-6 pt-10 pb-10 animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-8">
                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Paramètres</h1>
                <button onClick={handleSaveSettings} className={`flex items-center text-xs font-bold px-4 py-2 rounded-full transition-all bg-slate-900 text-white active:scale-95`}>
@@ -788,37 +786,41 @@
         );
       };
 
-      // Configuration précise pour coller la barre au bas de l'écran (avec prise en compte de l'encoche iPhone)
-      const safeAreaStyle = { 
-        paddingBottom: 'calc(12px + env(safe-area-inset-bottom))'
-      };
-
       return (
-        <React.Fragment>
-          <main className="flex-1 overflow-y-auto hide-scrollbar pb-32">
+        <div className="flex flex-col h-full w-full max-w-md bg-white shadow-2xl relative overflow-hidden">
+          
+          {/* ZONE DE CONTENU QUI DÉFILE */}
+          <main className="flex-1 overflow-y-auto hide-scrollbar bg-[#F7F7F9]">
             {activeTab === 'dashboard' && <DashboardView />}
             {activeTab === 'coach' && <CoachView />}
             {activeTab === 'add' && <AddTransactionView />}
             {activeTab === 'settings' && <SettingsView />}
           </main>
 
-          <div className="absolute bottom-0 w-full px-6 z-50 pointer-events-none" style={safeAreaStyle}>
-            <div className="bg-white/90 backdrop-blur-xl border border-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-[2rem] px-6 py-4 flex justify-between items-center pointer-events-auto">
-              <button onClick={() => setActiveTab('dashboard')} className={`transition-all duration-300 ${activeTab === 'dashboard' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                <Icon name="LayoutGrid" className="text-2xl" />
+          {/* BARRE DU BAS FIXÉE AU PLANCHER (Style Natif iOS) */}
+          <nav className="shrink-0 bg-white/95 backdrop-blur-md border-t border-slate-200 z-50 w-full" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <div className="flex justify-around items-center h-16 px-2">
+              <button onClick={() => setActiveTab('dashboard')} className={`flex-1 flex flex-col items-center justify-center transition-all duration-300 ${activeTab === 'dashboard' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="LayoutGrid" className="text-xl" />
               </button>
-              <button onClick={() => setActiveTab('coach')} className={`transition-all duration-300 ${activeTab === 'coach' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                <Icon name="Sparkles" className="text-2xl" />
+              
+              <button onClick={() => setActiveTab('coach')} className={`flex-1 flex flex-col items-center justify-center transition-all duration-300 ${activeTab === 'coach' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="Sparkles" className="text-xl" />
               </button>
-              <button onClick={() => { setActiveTab('add'); setViewDate(new Date()); }} className="bg-slate-900 text-white rounded-full p-4 shadow-lg shadow-slate-900/30 hover:bg-slate-800 transition-transform active:scale-95 -mt-12 border-[6px] border-[#F7F7F9]">
-                <Icon name="Plus" className="text-2xl" />
-              </button>
-              <button onClick={() => setActiveTab('settings')} className={`transition-all duration-300 ${activeTab === 'settings' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                <Icon name="MoreHorizontal" className="text-2xl" />
+
+              <div className="flex-1 flex justify-center -mt-6">
+                 <button onClick={() => { setActiveTab('add'); setViewDate(new Date()); }} className="bg-slate-900 text-white rounded-full p-4 shadow-xl hover:bg-slate-800 transition-transform active:scale-95 border-4 border-white flex items-center justify-center">
+                   <Icon name="Plus" className="text-xl" />
+                 </button>
+              </div>
+
+              <button onClick={() => setActiveTab('settings')} className={`flex-1 flex flex-col items-center justify-center transition-all duration-300 ${activeTab === 'settings' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="MoreHorizontal" className="text-xl" />
               </button>
             </div>
-          </div>
-        </React.Fragment>
+          </nav>
+
+        </div>
       );
     }
 
