@@ -2,9 +2,20 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mon Budget App</title>
+  <!-- Balise vitale pour iOS : force le plein écran et prend en compte "l'encoche" (viewport-fit=cover) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Budget</title>
   
+  <!-- Balises magiques d'Apple pour masquer Safari -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Budget">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#F7F7F9">
+  
+  <!-- Faux manifeste pour forcer le comportement d'une application autonome -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Mon Budget","short_name":"Budget","display":"standalone","background_color":"#F7F7F9","theme_color":"#F7F7F9"}'>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
@@ -17,45 +28,30 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <style>
+    /* Empêche le rebond élastique de toute la page (comportement iOS) */
+    html, body {
+        overscroll-behavior-y: none;
+        overflow: hidden;
+    }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
-<body class="bg-[#F7F7F9] text-slate-900 selection:bg-indigo-100 antialiased overflow-hidden">
-  <div id="root"></div>
+<body class="bg-[#F7F7F9] text-slate-900 selection:bg-indigo-100 antialiased h-[100dvh] w-full flex justify-center overflow-hidden">
+  <div id="root" class="w-full max-w-md relative h-full flex flex-col"></div>
 
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Mapping des icônes ultra-sécurisé
     const iconMap = {
-      'Plus': 'plus',
-      'LayoutGrid': 'table-cells-large',
-      'Sparkles': 'wand-magic-sparkles',
-      'Check': 'check',
-      'AlertCircle': 'circle-exclamation',
-      'TrendingUp': 'arrow-trend-up',
-      'Download': 'download',
-      'Save': 'floppy-disk',
-      'List': 'list',
-      'DollarSign': 'dollar-sign',
-      'Lightbulb': 'lightbulb',
-      'ChevronLeft': 'chevron-left',
-      'ChevronRight': 'chevron-right',
-      'Trash2': 'trash-can',
-      'RefreshCw': 'rotate',
-      'Shield': 'shield',
-      'Target': 'bullseye',
-      'Edit2': 'pen-to-square',
-      'X': 'xmark',
-      'Zap': 'bolt',
-      'MoreHorizontal': 'ellipsis',
-      'Tag': 'tag',
-      'Banknote': 'money-bill-wave',
-      'ArrowRightLeft': 'right-left',
-      'ShieldCheck': 'shield-halved',
-      'ArrowUpRight': 'arrow-up-right-from-square',
-      'Split': 'arrows-split-up-and-left'
+      'Plus': 'plus', 'LayoutGrid': 'table-cells-large', 'Sparkles': 'wand-magic-sparkles',
+      'Check': 'check', 'AlertCircle': 'circle-exclamation', 'TrendingUp': 'arrow-trend-up',
+      'Download': 'download', 'Save': 'floppy-disk', 'List': 'list', 'DollarSign': 'dollar-sign',
+      'Lightbulb': 'lightbulb', 'ChevronLeft': 'chevron-left', 'ChevronRight': 'chevron-right',
+      'Trash2': 'trash-can', 'RefreshCw': 'rotate', 'Shield': 'shield', 'Target': 'bullseye',
+      'Edit2': 'pen-to-square', 'X': 'xmark', 'Zap': 'bolt', 'MoreHorizontal': 'ellipsis',
+      'Tag': 'tag', 'Banknote': 'money-bill-wave', 'ArrowRightLeft': 'right-left',
+      'ShieldCheck': 'shield-halved', 'ArrowUpRight': 'arrow-up-right-from-square', 'Split': 'arrows-split-up-and-left'
     };
 
     const Icon = ({ name, className = "" }) => {
@@ -97,7 +93,6 @@
     const DonutChart = ({ data, totalSpent }) => {
       let cumulativePercent = 0;
       const safeTotal = Number(totalSpent) || 0;
-      
       if (safeTotal <= 0) {
         return (
           <div className="relative w-48 h-48 mx-auto flex items-center justify-center">
@@ -109,7 +104,6 @@
           </div>
         );
       }
-
       return (
         <div className="relative w-48 h-48 mx-auto">
           <svg viewBox="0 0 42 42" className="w-full h-full rotate-[-90deg] drop-shadow-md">
@@ -121,10 +115,7 @@
               const strokeDasharray = `${percent} ${100 - percent}`;
               const strokeDashoffset = 100 - cumulativePercent;
               cumulativePercent += percent;
-
-              return (
-                <circle key={slice.id} cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke={slice.hex || '#ccc'} strokeWidth="6" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} className="transition-all duration-1000 ease-out" />
-              );
+              return <circle key={slice.id} cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke={slice.hex || '#ccc'} strokeWidth="6" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} className="transition-all duration-1000 ease-out" />;
             })}
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -143,7 +134,6 @@
       const goToNextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
       const goToCurrentMonth = () => setViewDate(new Date());
 
-      // Sauvegarde super-sécurisée qui ne plante jamais
       const [customCategories, setCustomCategories] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_categories')) || DEFAULT_CATEGORIES; } catch { return DEFAULT_CATEGORIES; } });
       const [transactions, setTransactions] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_transactions')) || []; } catch { return []; } });
       const [allocations, setAllocations] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_allocations')) || []; } catch { return []; } });
@@ -160,34 +150,14 @@
       useEffect(() => { try { localStorage.setItem('fintech_goals', JSON.stringify(userGoals)); } catch(e){} }, [userGoals]);
       useEffect(() => { try { localStorage.setItem('fintech_fixed_expenses', JSON.stringify(fixedExpenses)); } catch(e){} }, [fixedExpenses]);
 
-      useEffect(() => {
-        let needsFix = false;
-        const fixedAllocations = allocations.map(alloc => {
-          if (alloc.splits) {
-            const fixedSplits = {};
-            Object.entries(alloc.splits).forEach(([k, v]) => {
-              if (typeof v === 'string') { fixedSplits[k] = parseFloat(v) || 0; needsFix = true; } 
-              else { fixedSplits[k] = v || 0; }
-            });
-            return { ...alloc, splits: fixedSplits };
-          }
-          return alloc;
-        });
-        if (needsFix) setAllocations(fixedAllocations);
-      }, []);
-
       const activeTemplate = customCategories.map(c => ({
-        ...c,
-        defaultSplit: userTemplate[c.id] !== undefined ? (parseFloat(userTemplate[c.id]) || 0) : (c.defaultSplit || 0)
+        ...c, defaultSplit: userTemplate[c.id] !== undefined ? (parseFloat(userTemplate[c.id]) || 0) : (c.defaultSplit || 0)
       }));
 
-      const allTimeEnvelopes = {};
-      const allTimeSpent = {};
+      const allTimeEnvelopes = {}; const allTimeSpent = {};
       activeTemplate.forEach(c => { allTimeEnvelopes[c.id] = 0; allTimeSpent[c.id] = 0; });
 
-      allocations.forEach(alloc => {
-        if (alloc.splits) { Object.entries(alloc.splits).forEach(([catId, amount]) => { if (allTimeEnvelopes[catId] !== undefined) allTimeEnvelopes[catId] += (parseFloat(amount) || 0); }); }
-      });
+      allocations.forEach(alloc => { if (alloc.splits) { Object.entries(alloc.splits).forEach(([catId, amount]) => { if (allTimeEnvelopes[catId] !== undefined) allTimeEnvelopes[catId] += (parseFloat(amount) || 0); }); } });
       transfers.forEach(tr => {
         if (allTimeEnvelopes[tr.fromCategoryId] !== undefined) allTimeEnvelopes[tr.fromCategoryId] -= (parseFloat(tr.amount) || 0);
         if (allTimeEnvelopes[tr.toCategoryId] !== undefined) allTimeEnvelopes[tr.toCategoryId] += (parseFloat(tr.amount) || 0);
@@ -205,13 +175,10 @@
       const currentTransactions = transactions.filter(t => String(t.date).startsWith(viewMonthPrefix));
       const currentTransfers = transfers.filter(tr => tr.month === viewMonthPrefix);
 
-      const monthEnvelopes = {};
-      const monthSpent = {};
+      const monthEnvelopes = {}; const monthSpent = {};
       activeTemplate.forEach(c => { monthEnvelopes[c.id] = 0; monthSpent[c.id] = 0; });
 
-      currentAllocations.forEach(alloc => {
-        if (alloc.splits) { Object.entries(alloc.splits).forEach(([catId, amount]) => { if (monthEnvelopes[catId] !== undefined) monthEnvelopes[catId] += (parseFloat(amount) || 0); }); }
-      });
+      currentAllocations.forEach(alloc => { if (alloc.splits) { Object.entries(alloc.splits).forEach(([catId, amount]) => { if (monthEnvelopes[catId] !== undefined) monthEnvelopes[catId] += (parseFloat(amount) || 0); }); } });
       currentTransfers.forEach(tr => {
         if (monthEnvelopes[tr.fromCategoryId] !== undefined) monthEnvelopes[tr.fromCategoryId] -= (parseFloat(tr.amount) || 0);
         if (monthEnvelopes[tr.toCategoryId] !== undefined) monthEnvelopes[tr.toCategoryId] += (parseFloat(tr.amount) || 0);
@@ -231,11 +198,7 @@
         const [splits, setSplits] = useState({});
         const [errorMsg, setErrorMsg] = useState('');
 
-        const applyTemplate = () => {
-          const newSplits = {};
-          activeTemplate.forEach(c => newSplits[c.id] = c.defaultSplit || 0);
-          setSplits(newSplits);
-        };
+        const applyTemplate = () => { const newSplits = {}; activeTemplate.forEach(c => newSplits[c.id] = c.defaultSplit || 0); setSplits(newSplits); };
 
         const expenseVal = parseFloat(expenseAmount) || 0;
         const availableInCat = (monthEnvelopes[categoryId] || 0) - (monthSpent[categoryId] || 0);
@@ -247,31 +210,23 @@
           if (!expenseAmount || isNaN(Number(expenseAmount)) || !categoryId) return;
           if (needsCover && !coverFromId) { setErrorMsg("Choisis une enveloppe de secours."); return; }
           setErrorMsg('');
-
           const newTransaction = { id: Date.now().toString(), date: expenseDate, amount: parseFloat(expenseAmount), categoryId, description, createdAt: new Date().toISOString() };
           setTransactions(prev => [...prev, newTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-
           if (needsCover && coverFromId) {
             setTransfers(prev => [...prev, { id: (Date.now() + 1).toString(), date: expenseDate, month: expenseDate.slice(0, 7), fromCategoryId: coverFromId, toCategoryId: categoryId, amount: shortfall, createdAt: new Date().toISOString() }]);
           }
-          setViewDate(new Date(expenseDate));
-          setExpenseAmount(''); setDescription(''); setCoverFromId(''); setActiveTab('dashboard');
+          setViewDate(new Date(expenseDate)); setExpenseAmount(''); setDescription(''); setCoverFromId(''); setActiveTab('dashboard');
         };
 
         const handlePaydaySubmit = (e) => {
           e.preventDefault();
-          const totalIncome = parseFloat(payAmount);
-          const parsedSplits = {};
-          let allocated = 0;
+          const totalIncome = parseFloat(payAmount); const parsedSplits = {}; let allocated = 0;
           Object.entries(splits).forEach(([key, val]) => { const num = parseFloat(val) || 0; parsedSplits[key] = num; allocated += num; });
-          
           if (!totalIncome || isNaN(totalIncome)) return;
           if (Math.abs(totalIncome - allocated) > 0.01) { setErrorMsg("Répartis l'intégralité de la paie."); return; }
           setErrorMsg('');
-          
           setAllocations(prev => [...prev, { id: Date.now().toString(), date: payDate, month: payDate.slice(0, 7), totalIncome: totalIncome, splits: parsedSplits, createdAt: new Date().toISOString() }]);
-          setViewDate(new Date(payDate));
-          setPayAmount(''); setSplits({}); setActiveTab('dashboard');
+          setViewDate(new Date(payDate)); setPayAmount(''); setSplits({}); setActiveTab('dashboard');
         };
 
         const handlePayFixedExpense = (fe) => {
@@ -436,7 +391,7 @@
         const safeInvestTarget = Number(userGoals[investCatId]) || 25000;
 
         return (
-          <div className="px-6 pt-10 pb-32 animate-in fade-in duration-500 relative">
+          <div className="px-6 pt-10 pb-36 animate-in fade-in duration-500 relative">
             {editingTx && (
               <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center sm:p-4">
                 <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 pb-12 animate-in shadow-2xl">
@@ -675,7 +630,7 @@
 
         if (isEditingCategories) {
           return (
-            <div className="px-6 pt-10 pb-32 animate-in duration-300">
+            <div className="px-6 pt-10 pb-36 animate-in duration-300">
                <div className="flex items-center mb-8">
                  <button onClick={() => setIsEditingCategories(false)} className="p-2 mr-2 bg-slate-200 rounded-full active:scale-95"><Icon name="ChevronLeft" className="text-lg"/></button>
                  <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Mes Enveloppes</h1>
@@ -724,7 +679,7 @@
         }
 
         return (
-          <div className="px-6 pt-10 pb-32 animate-in fade-in duration-500">
+          <div className="px-6 pt-10 pb-36 animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-8">
                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Paramètres</h1>
                <button onClick={handleSaveSettings} className={`flex items-center text-xs font-bold px-4 py-2 rounded-full transition-all bg-slate-900 text-white active:scale-95`}>
@@ -833,38 +788,37 @@
         );
       };
 
-      const safeAreaStyle = { paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' };
+      // Configuration précise pour coller la barre au bas de l'écran (avec prise en compte de l'encoche iPhone)
+      const safeAreaStyle = { 
+        paddingBottom: 'calc(12px + env(safe-area-inset-bottom))'
+      };
 
       return (
-        <div className="h-[100dvh] w-full bg-[#F7F7F9] flex justify-center font-sans antialiased text-slate-900 selection:bg-indigo-100 overflow-hidden">
-          <div className="w-full max-w-md relative h-full shadow-2xl shadow-slate-200/50 bg-[#F7F7F9] overflow-hidden flex flex-col">
-            
-            <main className="flex-1 overflow-y-auto hide-scrollbar pb-24">
-              {activeTab === 'dashboard' && <DashboardView />}
-              {activeTab === 'coach' && <CoachView />}
-              {activeTab === 'add' && <AddTransactionView />}
-              {activeTab === 'settings' && <SettingsView />}
-            </main>
+        <React.Fragment>
+          <main className="flex-1 overflow-y-auto hide-scrollbar pb-32">
+            {activeTab === 'dashboard' && <DashboardView />}
+            {activeTab === 'coach' && <CoachView />}
+            {activeTab === 'add' && <AddTransactionView />}
+            {activeTab === 'settings' && <SettingsView />}
+          </main>
 
-            <div className="absolute bottom-0 left-0 right-0 z-50 px-6 pointer-events-none" style={safeAreaStyle}>
-              <div className="bg-white/90 backdrop-blur-xl border border-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-[2rem] px-6 py-4 flex justify-between items-center mb-4 pointer-events-auto">
-                <button onClick={() => setActiveTab('dashboard')} className={`transition-all duration-300 ${activeTab === 'dashboard' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                  <Icon name="LayoutGrid" className="text-2xl" />
-                </button>
-                <button onClick={() => setActiveTab('coach')} className={`transition-all duration-300 ${activeTab === 'coach' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                  <Icon name="Sparkles" className="text-2xl" />
-                </button>
-                <button onClick={() => { setActiveTab('add'); setViewDate(new Date()); }} className="bg-slate-900 text-white rounded-full p-4 shadow-lg shadow-slate-900/30 hover:bg-slate-800 transition-transform active:scale-95 -mt-12 border-[6px] border-[#F7F7F9]">
-                  <Icon name="Plus" className="text-2xl" />
-                </button>
-                <button onClick={() => setActiveTab('settings')} className={`transition-all duration-300 ${activeTab === 'settings' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
-                  <Icon name="MoreHorizontal" className="text-2xl" />
-                </button>
-              </div>
+          <div className="absolute bottom-0 w-full px-6 z-50 pointer-events-none" style={safeAreaStyle}>
+            <div className="bg-white/90 backdrop-blur-xl border border-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-[2rem] px-6 py-4 flex justify-between items-center pointer-events-auto">
+              <button onClick={() => setActiveTab('dashboard')} className={`transition-all duration-300 ${activeTab === 'dashboard' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="LayoutGrid" className="text-2xl" />
+              </button>
+              <button onClick={() => setActiveTab('coach')} className={`transition-all duration-300 ${activeTab === 'coach' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="Sparkles" className="text-2xl" />
+              </button>
+              <button onClick={() => { setActiveTab('add'); setViewDate(new Date()); }} className="bg-slate-900 text-white rounded-full p-4 shadow-lg shadow-slate-900/30 hover:bg-slate-800 transition-transform active:scale-95 -mt-12 border-[6px] border-[#F7F7F9]">
+                <Icon name="Plus" className="text-2xl" />
+              </button>
+              <button onClick={() => setActiveTab('settings')} className={`transition-all duration-300 ${activeTab === 'settings' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon name="MoreHorizontal" className="text-2xl" />
+              </button>
             </div>
-
           </div>
-        </div>
+        </React.Fragment>
       );
     }
 
