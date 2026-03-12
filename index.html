@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mon Budget App</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome pour les icônes (100% stable) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-[#F7F7F9] text-slate-900 selection:bg-indigo-100 antialiased overflow-hidden">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Mapping des icônes ultra-sécurisé
+    const iconMap = {
+      'Plus': 'plus',
+      'LayoutGrid': 'table-cells-large',
+      'Sparkles': 'wand-magic-sparkles',
+      'Check': 'check',
+      'AlertCircle': 'circle-exclamation',
+      'TrendingUp': 'arrow-trend-up',
+      'Download': 'download',
+      'Save': 'floppy-disk',
+      'List': 'list',
+      'DollarSign': 'dollar-sign',
+      'Lightbulb': 'lightbulb',
+      'ChevronLeft': 'chevron-left',
+      'ChevronRight': 'chevron-right',
+      'Trash2': 'trash-can',
+      'RefreshCw': 'rotate',
+      'Shield': 'shield',
+      'Target': 'bullseye',
+      'Edit2': 'pen-to-square',
+      'X': 'xmark',
+      'Zap': 'bolt',
+      'MoreHorizontal': 'ellipsis',
+      'Tag': 'tag',
+      'Banknote': 'money-bill-wave',
+      'ArrowRightLeft': 'right-left',
+      'ShieldCheck': 'shield-halved',
+      'ArrowUpRight': 'arrow-up-right-from-square',
+      'Split': 'arrows-split-up-and-left'
+    };
+
+    const Icon = ({ name, className = "" }) => {
+      const faName = iconMap[name] || 'circle';
+      return <i className={`fa-solid fa-${faName} ${className}`}></i>;
+    };
+
+    const DEFAULT_CATEGORIES = [
+      { id: '2', name: 'Loyer', type: 'Fixe', defaultSplit: 400, hex: '#1e293b', color: 'bg-slate-800', light: 'bg-slate-100 text-slate-800' },
+      { id: '3', name: 'Épicerie', type: 'Fixe', defaultSplit: 125, hex: '#3b82f6', color: 'bg-blue-500', light: 'bg-blue-50 text-blue-700' },
+      { id: '4', name: 'Abonnements', type: 'Fixe', defaultSplit: 50, hex: '#60a5fa', color: 'bg-blue-400', light: 'bg-blue-50 text-blue-700' },
+      { id: '5', name: 'Transport', type: 'Fixe', defaultSplit: 50, hex: '#93c5fd', color: 'bg-blue-300', light: 'bg-blue-50 text-blue-700' },
+      { id: '6', name: 'Restaurants', type: 'Variable', defaultSplit: 75, hex: '#f43f5e', color: 'bg-rose-500', light: 'bg-rose-50 text-rose-700' },
+      { id: '7', name: 'Achats divers', type: 'Variable', defaultSplit: 50, hex: '#f97316', color: 'bg-orange-500', light: 'bg-orange-50 text-orange-700' },
+      { id: '9', name: 'Loisirs & Sorties', type: 'Variable', defaultSplit: 50, hex: '#8b5cf6', color: 'bg-violet-500', light: 'bg-violet-50 text-violet-700' },
+      { id: '10', name: 'Fonds d\'urgence', type: 'Épargne', defaultSplit: 150, hex: '#7c3aed', color: 'bg-violet-600', light: 'bg-violet-50 text-violet-700', target: 10000 },
+      { id: '11', name: 'Investissement', type: 'Épargne', defaultSplit: 50, hex: '#059669', color: 'bg-emerald-600', light: 'bg-emerald-50 text-emerald-700', target: 25000 }
+    ];
+
+    const PALETTE = [
+      { hex: '#ef4444', color: 'bg-red-500', light: 'bg-red-50 text-red-700' },
+      { hex: '#f97316', color: 'bg-orange-500', light: 'bg-orange-50 text-orange-700' },
+      { hex: '#f59e0b', color: 'bg-amber-500', light: 'bg-amber-50 text-amber-700' },
+      { hex: '#84cc16', color: 'bg-lime-500', light: 'bg-lime-50 text-lime-700' },
+      { hex: '#10b981', color: 'bg-emerald-500', light: 'bg-emerald-50 text-emerald-700' },
+      { hex: '#06b6d4', color: 'bg-cyan-500', light: 'bg-cyan-50 text-cyan-700' },
+      { hex: '#3b82f6', color: 'bg-blue-500', light: 'bg-blue-50 text-blue-700' },
+      { hex: '#8b5cf6', color: 'bg-violet-500', light: 'bg-violet-50 text-violet-700' },
+      { hex: '#ec4899', color: 'bg-pink-500', light: 'bg-pink-50 text-pink-700' },
+      { hex: '#64748b', color: 'bg-slate-500', light: 'bg-slate-50 text-slate-700' }
+    ];
+
+    const ConfirmDeleteButton = ({ onDelete }) => {
+      const [confirm, setConfirm] = useState(false);
+      if (confirm) return <button onClick={onDelete} className="text-[10px] font-bold bg-rose-500 text-white px-2 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all">Confirmer</button>;
+      return <button type="button" onClick={() => setConfirm(true)} className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"><Icon name="Trash2" className="text-sm" /></button>;
+    };
+
+    const DonutChart = ({ data, totalSpent }) => {
+      let cumulativePercent = 0;
+      const safeTotal = Number(totalSpent) || 0;
+      
+      if (safeTotal <= 0) {
+        return (
+          <div className="relative w-48 h-48 mx-auto flex items-center justify-center">
+            <svg viewBox="0 0 42 42" className="w-full h-full rotate-[-90deg]"><circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f1f5f9" strokeWidth="4"></circle></svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-light text-slate-400">$0</span>
+              <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Dépensé</span>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="relative w-48 h-48 mx-auto">
+          <svg viewBox="0 0 42 42" className="w-full h-full rotate-[-90deg] drop-shadow-md">
+            <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f8fafc" strokeWidth="6"></circle>
+            {data.map((slice) => {
+              const sliceAmount = Number(slice.amount) || 0;
+              if (sliceAmount <= 0) return null;
+              const percent = (sliceAmount / safeTotal) * 100;
+              const strokeDasharray = `${percent} ${100 - percent}`;
+              const strokeDashoffset = 100 - cumulativePercent;
+              cumulativePercent += percent;
+
+              return (
+                <circle key={slice.id} cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke={slice.hex || '#ccc'} strokeWidth="6" strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} className="transition-all duration-1000 ease-out" />
+              );
+            })}
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-2xl font-bold text-slate-900">${safeTotal.toFixed(0)}</span>
+            <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">Dépensé</span>
+          </div>
+        </div>
+      );
+    };
+
+    function App() {
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [viewDate, setViewDate] = useState(new Date());
+      
+      const goToPrevMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+      const goToNextMonth = () => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+      const goToCurrentMonth = () => setViewDate(new Date());
+
+      // Sauvegarde super-sécurisée qui ne plante jamais
+      const [customCategories, setCustomCategories] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_categories')) || DEFAULT_CATEGORIES; } catch { return DEFAULT_CATEGORIES; } });
+      const [transactions, setTransactions] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_transactions')) || []; } catch { return []; } });
+      const [allocations, setAllocations] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_allocations')) || []; } catch { return []; } });
+      const [transfers, setTransfers] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_transfers')) || []; } catch { return []; } });
+      const [userTemplate, setUserTemplate] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_template')) || {}; } catch { return {}; } });
+      const [userGoals, setUserGoals] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_goals')) || {"10": 10000, "11": 25000}; } catch { return {"10": 10000, "11": 25000}; } });
+      const [fixedExpenses, setFixedExpenses] = useState(() => { try { return JSON.parse(localStorage.getItem('fintech_fixed_expenses')) || []; } catch { return []; } });
+
+      useEffect(() => { try { localStorage.setItem('fintech_categories', JSON.stringify(customCategories)); } catch(e){} }, [customCategories]);
+      useEffect(() => { try { localStorage.setItem('fintech_transactions', JSON.stringify(transactions)); } catch(e){} }, [transactions]);
+      useEffect(() => { try { localStorage.setItem('fintech_allocations', JSON.stringify(allocations)); } catch(e){} }, [allocations]);
+      useEffect(() => { try { localStorage.setItem('fintech_transfers', JSON.stringify(transfers)); } catch(e){} }, [transfers]);
+      useEffect(() => { try { localStorage.setItem('fintech_template', JSON.stringify(userTemplate)); } catch(e){} }, [userTemplate]);
+      useEffect(() => { try { localStorage.setItem('fintech_goals', JSON.stringify(userGoals)); } catch(e){} }, [userGoals]);
+      useEffect(() => { try { localStorage.setItem('fintech_fixed_expenses', JSON.stringify(fixedExpenses)); } catch(e){} }, [fixedExpenses]);
+
+      useEffect(() => {
+        let needsFix = false;
+        const fixedAllocations = allocations.map(alloc => {
+          if (alloc.splits) {
+            const fixedSplits = {};
+            Object.entries(alloc.splits).forEach(([k, v]) => {
+              if (typeof v === 'string') { fixedSplits[k] = parseFloat(v) || 0; needsFix = true; } 
+              else { fixedSplits[k] = v || 0; }
+            });
+            return { ...alloc, splits: fixedSplits };
+          }
+          return alloc;
+        });
+        if (needsFix) setAllocations(fixedAllocations);
+      }, []);
+
+      const activeTemplate = customCategories.map(c => ({
+        ...c,
+        defaultSplit: userTemplate[c.id] !== undefined ? (parseFloat(userTemplate[c.id]) || 0) : (c.defaultSplit || 0)
+      }));
+
+      const allTimeEnvelopes = {};
+      const allTimeSpent = {};
+      activeTemplate.forEach(c => { allTimeEnvelopes[c.id] = 0; allTimeSpent[c.id] = 0; });
+
+      allocations.forEach(alloc => {
+        if (alloc.splits) { Object.entries(alloc.splits).forEach(([catId, amount]) => { if (allTimeEnvelopes[catId] !== undefined) allTimeEnvelopes[catId] += (parseFloat(amount) || 0); }); }
+      });
+      transfers.forEach(tr => {
+        if (allTimeEnvelopes[tr.fromCategoryId] !== undefined) allTimeEnvelopes[tr.fromCategoryId] -= (parseFloat(tr.amount) || 0);
+        if (allTimeEnvelopes[tr.toCategoryId] !== undefined) allTimeEnvelopes[tr.toCategoryId] += (parseFloat(tr.amount) || 0);
+      });
+      transactions.forEach(t => { if (allTimeSpent[t.categoryId] !== undefined) allTimeSpent[t.categoryId] += (parseFloat(t.amount) || 0); });
+
+      const urgenceCatId = customCategories.find(c => c.name.toLowerCase().includes('urgence'))?.id || '10';
+      const investCatId = customCategories.find(c => c.name.toLowerCase().includes('invest'))?.id || '11';
+      
+      const totalUrgence = (allTimeEnvelopes[urgenceCatId] || 0) - (allTimeSpent[urgenceCatId] || 0);
+      const totalInvestissement = (allTimeEnvelopes[investCatId] || 0) - (allTimeSpent[investCatId] || 0);
+
+      const viewMonthPrefix = viewDate.toISOString().slice(0, 7);
+      const currentAllocations = allocations.filter(a => a.month === viewMonthPrefix);
+      const currentTransactions = transactions.filter(t => String(t.date).startsWith(viewMonthPrefix));
+      const currentTransfers = transfers.filter(tr => tr.month === viewMonthPrefix);
+
+      const monthEnvelopes = {};
+      const monthSpent = {};
+      activeTemplate.forEach(c => { monthEnvelopes[c.id] = 0; monthSpent[c.id] = 0; });
+
+      currentAllocations.forEach(alloc => {
+        if (alloc.splits) { Object.entries(alloc.splits).forEach(([catId, amount]) => { if (monthEnvelopes[catId] !== undefined) monthEnvelopes[catId] += (parseFloat(amount) || 0); }); }
+      });
+      currentTransfers.forEach(tr => {
+        if (monthEnvelopes[tr.fromCategoryId] !== undefined) monthEnvelopes[tr.fromCategoryId] -= (parseFloat(tr.amount) || 0);
+        if (monthEnvelopes[tr.toCategoryId] !== undefined) monthEnvelopes[tr.toCategoryId] += (parseFloat(tr.amount) || 0);
+      });
+      currentTransactions.forEach(t => { if (monthSpent[t.categoryId] !== undefined) monthSpent[t.categoryId] += (parseFloat(t.amount) || 0); });
+
+      const AddTransactionView = () => {
+        const [mode, setMode] = useState('expense'); 
+        const [expenseAmount, setExpenseAmount] = useState('');
+        const [categoryId, setCategoryId] = useState(customCategories.filter(c => c.type !== 'Épargne')[0]?.id || '');
+        const [description, setDescription] = useState('');
+        const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+        const [coverFromId, setCoverFromId] = useState('');
+        
+        const [payAmount, setPayAmount] = useState('');
+        const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+        const [splits, setSplits] = useState({});
+        const [errorMsg, setErrorMsg] = useState('');
+
+        const applyTemplate = () => {
+          const newSplits = {};
+          activeTemplate.forEach(c => newSplits[c.id] = c.defaultSplit || 0);
+          setSplits(newSplits);
+        };
+
+        const expenseVal = parseFloat(expenseAmount) || 0;
+        const availableInCat = (monthEnvelopes[categoryId] || 0) - (monthSpent[categoryId] || 0);
+        const shortfall = expenseVal > availableInCat ? expenseVal - Math.max(0, availableInCat) : 0;
+        const needsCover = shortfall > 0;
+
+        const handleExpenseSubmit = (e) => {
+          e.preventDefault();
+          if (!expenseAmount || isNaN(Number(expenseAmount)) || !categoryId) return;
+          if (needsCover && !coverFromId) { setErrorMsg("Choisis une enveloppe de secours."); return; }
+          setErrorMsg('');
+
+          const newTransaction = { id: Date.now().toString(), date: expenseDate, amount: parseFloat(expenseAmount), categoryId, description, createdAt: new Date().toISOString() };
+          setTransactions(prev => [...prev, newTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
+          if (needsCover && coverFromId) {
+            setTransfers(prev => [...prev, { id: (Date.now() + 1).toString(), date: expenseDate, month: expenseDate.slice(0, 7), fromCategoryId: coverFromId, toCategoryId: categoryId, amount: shortfall, createdAt: new Date().toISOString() }]);
+          }
+          setViewDate(new Date(expenseDate));
+          setExpenseAmount(''); setDescription(''); setCoverFromId(''); setActiveTab('dashboard');
+        };
+
+        const handlePaydaySubmit = (e) => {
+          e.preventDefault();
+          const totalIncome = parseFloat(payAmount);
+          const parsedSplits = {};
+          let allocated = 0;
+          Object.entries(splits).forEach(([key, val]) => { const num = parseFloat(val) || 0; parsedSplits[key] = num; allocated += num; });
+          
+          if (!totalIncome || isNaN(totalIncome)) return;
+          if (Math.abs(totalIncome - allocated) > 0.01) { setErrorMsg("Répartis l'intégralité de la paie."); return; }
+          setErrorMsg('');
+          
+          setAllocations(prev => [...prev, { id: Date.now().toString(), date: payDate, month: payDate.slice(0, 7), totalIncome: totalIncome, splits: parsedSplits, createdAt: new Date().toISOString() }]);
+          setViewDate(new Date(payDate));
+          setPayAmount(''); setSplits({}); setActiveTab('dashboard');
+        };
+
+        const handlePayFixedExpense = (fe) => {
+          const today = new Date().toISOString().split('T')[0];
+          setTransactions(prev => [...prev, { id: Date.now().toString(), date: today, amount: parseFloat(fe.amount) || 0, categoryId: fe.categoryId, description: `[Fixe] ${fe.name}`, isFixed: true, fixedId: fe.id, createdAt: new Date().toISOString() }].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+          setViewDate(new Date(today));
+        };
+
+        const totalAllocated = Object.values(splits).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+        const leftToAllocate = (parseFloat(payAmount) || 0) - totalAllocated;
+
+        return (
+          <div className="h-full flex flex-col animate-in fade-in duration-500">
+            <div className="pt-10 px-6 pb-4 shrink-0">
+              <div className="bg-slate-200/50 p-1 rounded-2xl flex relative">
+                <button onClick={() => setMode('expense')} className={`flex-1 py-2.5 rounded-xl text-[11px] uppercase tracking-wider font-bold z-10 transition-colors ${mode === 'expense' ? 'text-slate-900 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-700'}`}>Dépense</button>
+                <button onClick={() => setMode('payday')} className={`flex-1 py-2.5 rounded-xl text-[11px] uppercase tracking-wider font-bold z-10 transition-colors ${mode === 'payday' ? 'text-emerald-700 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-700'}`}>Paie</button>
+                <button onClick={() => setMode('fixed')} className={`flex-1 flex justify-center items-center py-2.5 rounded-xl text-[11px] uppercase tracking-wider font-bold z-10 transition-colors ${mode === 'fixed' ? 'text-indigo-700 shadow-sm bg-white' : 'text-slate-500 hover:text-slate-700'}`}><Icon name="Zap" className="mr-1" /> Fixes</button>
+              </div>
+            </div>
+
+            {mode === 'expense' && (
+              <form onSubmit={handleExpenseSubmit} className="flex-1 flex flex-col px-6 pb-32 animate-in fade-in hide-scrollbar overflow-y-auto">
+                <div className="flex justify-center items-center mb-8 shrink-0">
+                  <span className="text-3xl text-slate-300 font-light mr-1">$</span>
+                  <input type="number" step="0.01" inputMode="decimal" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} className="w-full text-6xl font-light text-slate-800 bg-transparent outline-none text-center placeholder-slate-200" placeholder="0.00" required />
+                </div>
+                
+                <div className="space-y-4 shrink-0">
+                  <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
+                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 ml-1">Tirer de l'enveloppe</label>
+                    <select value={categoryId} onChange={(e) => {setCategoryId(e.target.value); setCoverFromId('');}} className="w-full bg-transparent text-slate-800 font-medium text-lg outline-none appearance-none">
+                      {activeTemplate.filter(c => c.type !== 'Épargne').map(c => <option key={c.id} value={c.id}>{c.name} (Dispo: ${(Number(monthEnvelopes[c.id]) - Number(monthSpent[c.id]) || 0).toFixed(2)})</option>)}
+                    </select>
+                  </div>
+
+                  {needsCover && (
+                    <div className="bg-rose-50 rounded-3xl p-4 border border-rose-200 shadow-sm animate-in duration-300">
+                      <div className="flex items-center text-rose-700 font-bold text-sm mb-2 ml-1"><Icon name="ArrowRightLeft" className="mr-1.5" /> Dépassement détecté !</div>
+                      <p className="text-xs text-rose-600 mb-3 ml-1">Il manque <strong>${(Number(shortfall) || 0).toFixed(2)}</strong>. Quelle enveloppe doit te secourir ?</p>
+                      <select value={coverFromId} onChange={(e) => setCoverFromId(e.target.value)} className="w-full bg-white text-rose-900 font-medium text-sm p-3 rounded-xl border border-rose-100 outline-none" required>
+                        <option value="" disabled>Choisir une enveloppe...</option>
+                        {activeTemplate.filter(c => c.id !== categoryId && c.type !== 'Épargne').map(c => <option key={c.id} value={c.id}>{c.name} (Dispo: ${(Number(monthEnvelopes[c.id]) - Number(monthSpent[c.id]) || 0).toFixed(2)})</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 text-slate-800 font-medium text-base outline-none placeholder-slate-300" placeholder="Note (Ex: Tim Hortons...)" />
+                  <input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} className="w-full bg-white rounded-3xl p-4 shadow-sm border border-slate-100 text-slate-800 font-medium text-base outline-none" />
+                </div>
+                {errorMsg && <p className="text-rose-600 text-sm font-bold mt-4 text-center">{errorMsg}</p>}
+                <button type="submit" disabled={needsCover && !coverFromId} className={`mt-6 w-full rounded-3xl py-4 text-lg font-semibold flex justify-center items-center transition-all shrink-0 ${needsCover && !coverFromId ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl active:scale-[0.98]'}`}>
+                  {needsCover ? 'Valider et Transférer' : 'Ajouter la dépense'}
+                </button>
+              </form>
+            )}
+
+            {mode === 'payday' && (
+              <form onSubmit={handlePaydaySubmit} className="flex-1 flex flex-col pb-32 animate-in fade-in hide-scrollbar overflow-y-auto">
+                <div className="px-6 mb-6 shrink-0">
+                   <div className="flex justify-center items-center mb-6">
+                     <span className="text-3xl text-emerald-300 font-light mr-1">+$</span>
+                     <input type="number" step="0.01" inputMode="decimal" value={payAmount} onChange={(e) => {setPayAmount(e.target.value); setErrorMsg('');}} className="w-full text-5xl font-light text-emerald-600 bg-transparent outline-none text-center placeholder-emerald-200" placeholder="Montant" required />
+                   </div>
+                   <div className={`p-4 rounded-2xl flex justify-between items-center transition-colors shadow-inner ${Math.abs(leftToAllocate) < 0.01 ? 'bg-emerald-100 text-emerald-800' : leftToAllocate > 0 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}`}>
+                     <span className="font-bold text-sm">À répartir :</span><span className="text-xl font-black">${(Number(leftToAllocate) || 0).toFixed(2)}</span>
+                   </div>
+                   {errorMsg && <div className="mt-3 flex items-center text-rose-600 text-sm font-medium bg-rose-50 p-3 rounded-xl"><Icon name="AlertCircle" className="mr-2 shrink-0" /> {errorMsg}</div>}
+                   {Object.keys(splits).length === 0 && (
+                      <button type="button" onClick={applyTemplate} className="mt-4 w-full bg-white border-2 border-dashed border-slate-300 text-slate-600 font-bold py-3 rounded-2xl flex items-center justify-center hover:bg-slate-50">
+                        <Icon name="Split" className="mr-2" /> Appliquer mon modèle type
+                      </button>
+                   )}
+                </div>
+
+                {Object.keys(splits).length > 0 && (
+                  <div className="px-6 space-y-3 shrink-0">
+                    {activeTemplate.map(cat => (
+                      <div key={cat.id} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-50 flex justify-between items-center">
+                        <div className="flex items-center">
+                           <div className={`w-6 h-6 rounded-full flex items-center justify-center mr-2 ${cat.light || 'bg-slate-100'}`}><span className="text-[10px] font-bold">{(cat.name || '?').charAt(0)}</span></div>
+                           <span className="font-semibold text-slate-700 text-sm truncate w-24">{cat.name}</span>
+                        </div>
+                        <div className="relative w-28">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">$</span>
+                          <input type="number" inputMode="decimal" value={splits[cat.id] === undefined ? '' : splits[cat.id]} onChange={(e) => { setSplits({...splits, [cat.id]: e.target.value}); setErrorMsg(''); }} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-1.5 pl-6 pr-2 text-right font-bold text-slate-900 outline-none focus:border-emerald-500 focus:bg-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {Object.keys(splits).length > 0 && (
+                  <div className="px-6 pt-4 shrink-0 mt-4">
+                    <button type="submit" className={`w-full rounded-3xl py-4 text-lg font-semibold flex justify-center items-center transition-all ${Math.abs(leftToAllocate) > 0.01 ? 'bg-slate-200 text-slate-400' : 'bg-emerald-600 text-white shadow-xl shadow-emerald-600/20 active:scale-[0.98]'}`}>
+                      {Math.abs(leftToAllocate) > 0.01 ? 'Répartir la totalité' : 'Valider les enveloppes'}
+                    </button>
+                  </div>
+                )}
+              </form>
+            )}
+
+            {mode === 'fixed' && (
+              <div className="flex-1 flex flex-col px-6 pb-32 animate-in fade-in hide-scrollbar overflow-y-auto">
+                <h2 className="text-xl font-bold text-slate-900 mb-2">Checklist du mois</h2>
+                <p className="text-sm text-slate-500 mb-6">Passe tes abonnements et loyers en un clic.</p>
+                {fixedExpenses.length === 0 ? (
+                  <div className="text-center p-6 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-500 text-sm">Tu n'as configuré aucune charge fixe. Va dans les Paramètres pour les ajouter.</div>
+                ) : (
+                  <div className="space-y-3 shrink-0">
+                     {fixedExpenses.map(fe => {
+                        const isPaid = currentTransactions.some(t => t.isFixed && t.fixedId === fe.id);
+                        const cat = activeTemplate.find(c => c.id === fe.categoryId);
+                        return (
+                           <div key={fe.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-50 flex justify-between items-center">
+                             <div>
+                               <p className="font-bold text-slate-800 text-sm">{fe.name}</p>
+                               <p className="text-xs text-slate-400">{cat?.name || 'Catégorie supprimée'}</p>
+                             </div>
+                             <div className="flex items-center space-x-4">
+                               <span className="font-bold text-slate-900">${(Number(fe.amount) || 0).toFixed(2)}</span>
+                               {isPaid ? (
+                                  <div className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center border border-emerald-100"><Icon name="Check" className="mr-1"/> Payé</div>
+                               ) : (
+                                  <button onClick={() => handlePayFixedExpense(fe)} className="bg-slate-900 text-white px-4 py-1.5 rounded-xl text-xs font-bold active:scale-95 transition-transform shadow-md shadow-slate-900/20">Payer</button>
+                               )}
+                             </div>
+                           </div>
+                        );
+                     })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      const DashboardView = () => {
+        const [editingTx, setEditingTx] = useState(null);
+        const [editForm, setEditForm] = useState({ amount: '', categoryId: '', description: '', date: '' });
+
+        const openEditModal = (tx) => { setEditingTx(tx); setEditForm({ amount: tx.amount, categoryId: tx.categoryId, description: tx.description || '', date: tx.date }); };
+        const saveEdit = (e) => {
+          e.preventDefault();
+          const numAmount = parseFloat(editForm.amount) || 0;
+          setTransactions(prev => prev.map(t => t.id === editingTx.id ? { ...t, amount: numAmount, categoryId: editForm.categoryId, description: editForm.description, date: editForm.date } : t).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+          setEditingTx(null);
+        };
+
+        const budgetDepenses = activeTemplate.filter(c => c.type !== 'Épargne').reduce((sum, c) => sum + (Number(monthEnvelopes[c.id]) || 0), 0);
+        const spentDepenses = activeTemplate.filter(c => c.type !== 'Épargne').reduce((sum, c) => sum + (Number(monthSpent[c.id]) || 0), 0);
+        const resteGlobalHorsEpargne = budgetDepenses - spentDepenses;
+
+        const totalAllocated = Object.values(monthEnvelopes).reduce((a, b) => (Number(a) || 0) + (Number(b) || 0), 0);
+        const totalEpargneAlloc = activeTemplate.filter(c => c.type === 'Épargne').reduce((sum, c) => sum + (Number(monthEnvelopes[c.id]) || 0), 0);
+        const tauxEpargne = totalAllocated > 0 ? Math.round((totalEpargneAlloc / totalAllocated) * 100) : 0;
+        const isCurrentMonth = new Date().toISOString().slice(0, 7) === viewMonthPrefix;
+
+        const timeline = [...currentTransactions.map(t => ({...t, _type: 'expense'})), ...currentAllocations.map(a => ({...a, _type: 'payday'})), ...currentTransfers.map(tr => ({...tr, _type: 'transfer'}))].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const donutData = activeTemplate.filter(c => c.type !== 'Épargne').map(cat => ({ id: cat.id, amount: Number(monthSpent[cat.id]) || 0, hex: cat.hex })).filter(slice => slice.amount > 0);
+
+        const safeUrgenceTarget = Number(userGoals[urgenceCatId]) || 10000;
+        const safeInvestTarget = Number(userGoals[investCatId]) || 25000;
+
+        return (
+          <div className="px-6 pt-10 pb-32 animate-in fade-in duration-500 relative">
+            {editingTx && (
+              <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-end justify-center sm:items-center sm:p-4">
+                <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md p-6 pb-12 animate-in shadow-2xl">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-bold text-lg text-slate-900">Modifier la dépense</h3>
+                    <button onClick={() => setEditingTx(null)} className="p-2 bg-slate-100 rounded-full text-slate-500 active:scale-95"><Icon name="X" className="text-lg"/></button>
+                  </div>
+                  <form onSubmit={saveEdit} className="space-y-4">
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                      <input type="number" step="0.01" inputMode="decimal" value={editForm.amount} onChange={(e) => setEditForm({...editForm, amount: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-8 pr-4 text-right font-bold text-slate-900 outline-none focus:border-indigo-500 focus:bg-white" required />
+                    </div>
+                    <select value={editForm.categoryId} onChange={(e) => setEditForm({...editForm, categoryId: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 font-medium text-slate-900 outline-none focus:border-indigo-500 focus:bg-white">
+                      {activeTemplate.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <input type="text" value={editForm.description} onChange={(e) => setEditForm({...editForm, description: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 font-medium text-slate-900 outline-none focus:border-indigo-500 focus:bg-white" placeholder="Note optionnelle..." />
+                    <input type="date" value={editForm.date} onChange={(e) => setEditForm({...editForm, date: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 font-medium text-slate-900 outline-none focus:border-indigo-500 focus:bg-white" required />
+                    <button type="submit" className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold mt-4 active:scale-95 transition-transform">Enregistrer les modifications</button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            <div className="mb-10">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-4">Mon Patrimoine</h1>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gradient-to-br from-violet-600 to-violet-700 rounded-2xl p-4 text-white shadow-lg shadow-violet-600/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full blur-xl -mr-4 -mt-4"></div>
+                  <div className="flex items-center justify-between mb-3 opacity-90">
+                    <Icon name="ShieldCheck" className="text-lg" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">Urgence</span>
+                  </div>
+                  <p className="text-2xl font-light tracking-tight">${(Number(totalUrgence) || 0).toFixed(0)}</p>
+                  <div className="mt-4">
+                    <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden"><div className="bg-white h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(((Number(totalUrgence) || 0) / safeUrgenceTarget) * 100, 100)}%` }}></div></div>
+                    <div className="flex justify-between items-center mt-1.5 opacity-60"><span className="text-[9px] font-medium">{Math.min(((Number(totalUrgence) || 0) / safeUrgenceTarget) * 100, 100).toFixed(0)}%</span><span className="text-[9px] font-medium flex items-center"><Icon name="Target" className="mr-0.5" /> {safeUrgenceTarget.toLocaleString()}$</span></div>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-2xl p-4 text-white shadow-lg shadow-emerald-600/20 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full blur-xl -mr-4 -mt-4"></div>
+                  <div className="flex items-center justify-between mb-3 opacity-90">
+                    <Icon name="TrendingUp" className="text-lg" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full">Investi</span>
+                  </div>
+                  <p className="text-2xl font-light tracking-tight">${(Number(totalInvestissement) || 0).toFixed(0)}</p>
+                  <div className="mt-4">
+                    <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden"><div className="bg-white h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(((Number(totalInvestissement) || 0) / safeInvestTarget) * 100, 100)}%` }}></div></div>
+                    <div className="flex justify-between items-center mt-1.5 opacity-60"><span className="text-[9px] font-medium">{Math.min(((Number(totalInvestissement) || 0) / safeInvestTarget) * 100, 100).toFixed(0)}%</span><span className="text-[9px] font-medium flex items-center"><Icon name="Target" className="mr-0.5" /> {safeInvestTarget.toLocaleString()}$</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center mb-4 mt-10">
+              <div className="flex items-center space-x-3 mb-1">
+                 <button onClick={goToPrevMonth} className="p-1.5 bg-white rounded-full shadow-sm text-slate-500 hover:text-slate-900 active:scale-95"><Icon name="ChevronLeft" className="text-sm" /></button>
+                 <h2 className="text-lg font-bold text-slate-800 tracking-tight capitalize w-32 text-center">{viewDate.toLocaleString('fr-CA', { month: 'long', year: 'numeric' })}</h2>
+                 <button onClick={goToNextMonth} className="p-1.5 bg-white rounded-full shadow-sm text-slate-500 hover:text-slate-900 active:scale-95"><Icon name="ChevronRight" className="text-sm" /></button>
+              </div>
+              {!isCurrentMonth && <button onClick={goToCurrentMonth} className="text-indigo-600 text-xs font-semibold hover:underline bg-indigo-50 px-3 py-1.5 rounded-full">Aujourd'hui</button>}
+            </div>
+
+            <div className="bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl shadow-slate-900/10 mb-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
+              <p className="text-slate-400 text-sm font-medium mb-1">Disponible (Hors Épargne)</p>
+              <div className="flex items-baseline"><span className="text-5xl font-light tracking-tighter">${(Number(resteGlobalHorsEpargne) || 0).toFixed(2)}</span></div>
+              <div className="mt-6 flex justify-between items-center border-t border-white/10 pt-4">
+                <div><p className="text-slate-400 text-[11px] mb-1 uppercase tracking-wider font-semibold">Budget Dépenses</p><p className="font-medium text-sm text-emerald-400 flex items-center"><Icon name="ArrowUpRight" className="mr-1" /> ${(Number(budgetDepenses) || 0).toFixed(0)}</p></div>
+                <div><p className="text-slate-400 text-[11px] mb-1 uppercase tracking-wider font-semibold text-right">Taux d'Épargne</p><p className="font-medium text-sm text-white flex items-center justify-end"><Icon name="TrendingUp" className="text-emerald-400 mr-1"/> {tauxEpargne}%</p></div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-50 mb-8">
+               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6 text-center">Répartition des dépenses</h3>
+               <DonutChart data={donutData} totalSpent={spentDepenses} />
+            </div>
+
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">État des enveloppes</h3>
+            <div className="space-y-3 mb-8">
+              {activeTemplate.filter(c => c.type !== 'Épargne').map(cat => {
+                const allocated = Number(monthEnvelopes[cat.id]) || 0;
+                const spent = Number(monthSpent[cat.id]) || 0;
+                if (allocated === 0 && spent === 0) return null;
+                const remaining = allocated - spent;
+                const percentage = allocated > 0 ? (spent / allocated) * 100 : (spent > 0 ? 100 : 0);
+                let statusColor = "bg-emerald-500";
+                if (remaining < 0) statusColor = "bg-rose-500"; else if (percentage >= 85) statusColor = "bg-orange-500";
+
+                return (
+                  <div key={cat.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-50 flex flex-col group">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${cat.light || 'bg-slate-100'}`}><span className="text-xs font-bold">{(cat.name || '?').charAt(0)}</span></div>
+                        <span className="font-semibold text-slate-800 text-sm">{cat.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-bold text-sm ${remaining < 0 ? 'text-rose-600' : 'text-slate-900'}`}>${remaining.toFixed(2)} dispo</p>
+                        <p className="text-xs text-slate-400">sur ${allocated.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden"><div className={`h-full rounded-full ${statusColor} transition-all duration-1000 ease-out`} style={{ width: `${Math.min(percentage, 100)}%` }}></div></div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 mt-10">Historique</h3>
+            <div className="space-y-3 mb-8">
+              {timeline.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6 bg-white rounded-2xl border border-dashed border-slate-200">Aucune transaction ce mois-ci.</p>
+              ) : (
+                timeline.map(item => {
+                  const cat = item._type === 'expense' ? activeTemplate.find(c => c.id === item.categoryId) : null;
+                  const fromCat = item._type === 'transfer' ? activeTemplate.find(c => c.id === item.fromCategoryId) : null;
+                  const toCat = item._type === 'transfer' ? activeTemplate.find(c => c.id === item.toCategoryId) : null;
+                  
+                  return (
+                    <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-50 flex justify-between items-center">
+                      <div className="flex items-center flex-1 overflow-hidden pr-2">
+                         {item._type === 'payday' ? (
+                           <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mr-3 shrink-0"><Icon name="Banknote" className="text-lg"/></div>
+                         ) : item._type === 'transfer' ? (
+                           <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mr-3 shrink-0"><Icon name="ArrowRightLeft" className="text-lg"/></div>
+                         ) : (
+                           <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shrink-0 ${cat?.light || 'bg-slate-100'}`}>
+                              {item.isFixed ? <Icon name="Zap" className="text-sm" /> : <span className="text-sm font-bold">{(cat?.name || '?').charAt(0)}</span>}
+                           </div>
+                         )}
+                         <div className="truncate">
+                           <p className="font-semibold text-slate-800 text-sm truncate">
+                             {item._type === 'payday' ? 'Jour de Paie' : item._type === 'transfer' ? 'Transfert de sécurité' : (cat?.name || 'Inconnu')}
+                           </p>
+                           <p className="text-xs text-slate-400 truncate">
+                             {item.date && item.date.split('-').reverse().join('/')} 
+                             {item._type === 'transfer' && ` • De ${fromCat?.name || '?'} vers ${toCat?.name || '?'}`}
+                             {item._type === 'expense' && item.description && ` • ${item.description}`}
+                           </p>
+                         </div>
+                      </div>
+                      <div className="flex items-center space-x-1 pl-2 shrink-0">
+                        <span className={`font-bold text-sm whitespace-nowrap mr-2 ${item._type === 'payday' ? 'text-emerald-500' : item._type === 'transfer' ? 'text-slate-400' : 'text-slate-900'}`}>
+                          {item._type === 'payday' ? '+' : item._type === 'transfer' ? '🔄 ' : '-'}${(Number(item._type === 'payday' ? item.totalIncome : item.amount) || 0).toFixed(2)}
+                        </span>
+                        {item._type === 'expense' && (
+                          <button onClick={() => openEditModal(item)} className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"><Icon name="Edit2" className="text-sm" /></button>
+                        )}
+                        <ConfirmDeleteButton onDelete={() => {
+                           if(item._type === 'payday') setAllocations(prev => prev.filter(a => a.id !== item.id));
+                           else if(item._type === 'transfer') setTransfers(prev => prev.filter(tr => tr.id !== item.id));
+                           else setTransactions(prev => prev.filter(t => t.id !== item.id));
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const CoachView = () => {
+        return (
+          <div className="px-6 pt-10 pb-40 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center">Coach <Icon name="Sparkles" className="ml-2 text-indigo-500" /></h1>
+            </div>
+            <div className="bg-slate-900 text-white rounded-[2rem] p-6 shadow-xl shadow-slate-900/10 mb-5 relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/20 rounded-full blur-2xl -mr-8 -mt-8"></div>
+                 <div className="flex items-center mb-3"><Icon name="Lightbulb" className="text-indigo-400 mr-2" /><h3 className="font-bold text-white text-lg">Le Coach se repose</h3></div>
+                 <p className="text-sm text-slate-300 leading-relaxed">Puisque tes catégories sont maintenant 100% personnalisables, le coach observe tes nouvelles habitudes avant de te donner des conseils. Continue de renseigner tes dépenses !</p>
+            </div>
+          </div>
+        );
+      };
+
+      const SettingsView = () => {
+        const [localTemplate, setLocalTemplate] = useState(activeTemplate.reduce((acc, cat) => ({...acc, [cat.id]: cat.defaultSplit || 0}), {}));
+        const [localGoals, setLocalGoals] = useState({ [urgenceCatId]: userGoals[urgenceCatId] || 10000, [investCatId]: userGoals[investCatId] || 25000 });
+        
+        const [feName, setFeName] = useState('');
+        const [feAmount, setFeAmount] = useState('');
+        const [feCategory, setFeCategory] = useState(activeTemplate.filter(c => c.type !== 'Épargne')[0]?.id || '');
+
+        const [isEditingCategories, setIsEditingCategories] = useState(false);
+        const [newCatName, setNewCatName] = useState('');
+        const [newCatType, setNewCatType] = useState('Variable');
+        const [newCatColor, setNewCatColor] = useState(PALETTE[0]);
+
+        const handleSaveSettings = () => {
+          setUserTemplate(localTemplate);
+          const newGoals = { [urgenceCatId]: parseFloat(localGoals[urgenceCatId]) || 10000, [investCatId]: parseFloat(localGoals[investCatId]) || 25000 };
+          setUserGoals(newGoals);
+          alert('Paramètres sauvegardés avec succès !');
+        };
+
+        const handleAddFixedExpense = () => {
+          if (!feName || !feAmount || !feCategory) return;
+          const newFe = { id: Date.now().toString(), name: feName, amount: parseFloat(feAmount) || 0, categoryId: feCategory };
+          setFixedExpenses(prev => [...prev, newFe]);
+          setFeName(''); setFeAmount('');
+        };
+
+        const handleAddCategory = () => {
+          if (!newCatName) return;
+          const newCat = {
+            id: Date.now().toString(),
+            name: newCatName,
+            type: newCatType,
+            defaultSplit: 0,
+            hex: newCatColor.hex,
+            color: newCatColor.color,
+            light: newCatColor.light
+          };
+          setCustomCategories(prev => [...prev, newCat]);
+          setLocalTemplate(prev => ({...prev, [newCat.id]: 0}));
+          setNewCatName('');
+        };
+
+        const handleDeleteCategory = (catId) => {
+          if(window.confirm("Êtes-vous sûr ? Supprimer cette enveloppe rendra l'historique de ses anciennes dépenses orphelin.")) {
+            setCustomCategories(prev => prev.filter(c => c.id !== catId));
+            setFixedExpenses(prev => prev.filter(fe => fe.categoryId !== catId));
+          }
+        };
+
+        const handleExportCSV = () => {
+          let csvContent = "Date\tMontant\tCatégorie\tDescription\n";
+          transactions.forEach(t => {
+            const cat = activeTemplate.find(c => c.id === t.categoryId)?.name || 'Inconnu';
+            csvContent += `${t.date}\t${Number(t.amount) || 0}\t${cat}\t${t.description || ''}\n`;
+          });
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `Budget_Export.csv`; link.click();
+        };
+
+        if (isEditingCategories) {
+          return (
+            <div className="px-6 pt-10 pb-32 animate-in duration-300">
+               <div className="flex items-center mb-8">
+                 <button onClick={() => setIsEditingCategories(false)} className="p-2 mr-2 bg-slate-200 rounded-full active:scale-95"><Icon name="ChevronLeft" className="text-lg"/></button>
+                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Mes Enveloppes</h1>
+               </div>
+
+               <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-50 mb-8">
+                 <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Créer une enveloppe</h3>
+                 <input placeholder="Nom (ex: Mon Chien, Essence...)" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold outline-none mb-3 focus:border-indigo-500"/>
+                 
+                 <select value={newCatType} onChange={(e) => setNewCatType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-sm font-bold outline-none mb-4 focus:border-indigo-500">
+                    <option value="Variable">Dépense Variable (Sorties, Courses...)</option>
+                    <option value="Fixe">Dépense Fixe (Loyer, Abonnements...)</option>
+                    <option value="Épargne">Épargne (Bloqué, non compté dans le Reste à vivre)</option>
+                 </select>
+
+                 <p className="text-xs font-bold text-slate-400 mb-2 uppercase">Couleur</p>
+                 <div className="flex flex-wrap gap-2 mb-4">
+                    {PALETTE.map(p => (
+                       <button key={p.hex} type="button" onClick={() => setNewCatColor(p)} className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform ${p.color} ${newCatColor.hex === p.hex ? 'ring-4 ring-offset-2 ring-slate-200 scale-110' : ''}`}>
+                          {newCatColor.hex === p.hex && <Icon name="Check" className="text-white text-sm"/>}
+                       </button>
+                    ))}
+                 </div>
+                 <button onClick={handleAddCategory} className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm active:scale-95 transition-all">Ajouter l'enveloppe</button>
+               </div>
+
+               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Enveloppes Actuelles</h3>
+               <div className="space-y-2">
+                  {customCategories.map(cat => (
+                     <div key={cat.id} className="bg-white p-4 rounded-2xl flex justify-between items-center shadow-sm border border-slate-50">
+                        <div className="flex items-center">
+                           <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${cat.light || 'bg-slate-100'}`}><span className="text-xs font-bold">{(cat.name || '?').charAt(0)}</span></div>
+                           <div>
+                             <span className="font-semibold text-slate-800 text-sm block">{cat.name}</span>
+                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{cat.type}</span>
+                           </div>
+                        </div>
+                        {cat.id !== urgenceCatId && cat.id !== investCatId && (
+                           <button onClick={() => handleDeleteCategory(cat.id)} className="p-2 text-rose-400 hover:bg-rose-50 rounded-lg"><Icon name="Trash2" className="text-sm"/></button>
+                        )}
+                     </div>
+                  ))}
+               </div>
+            </div>
+          );
+        }
+
+        return (
+          <div className="px-6 pt-10 pb-32 animate-in fade-in duration-500">
+            <div className="flex justify-between items-center mb-8">
+               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Paramètres</h1>
+               <button onClick={handleSaveSettings} className={`flex items-center text-xs font-bold px-4 py-2 rounded-full transition-all bg-slate-900 text-white active:scale-95`}>
+                 <Icon name="Save" className="mr-1.5" /> Sauvegarder
+               </button>
+            </div>
+
+            <button onClick={() => setIsEditingCategories(true)} className="w-full bg-indigo-50 border border-indigo-100 rounded-2xl p-4 mb-8 flex justify-between items-center active:scale-95 transition-transform">
+               <div className="flex items-center">
+                 <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3"><Icon name="Tag" className="text-lg"/></div>
+                 <div className="text-left">
+                   <h3 className="font-bold text-indigo-900 text-sm">Gérer mes enveloppes</h3>
+                   <p className="text-xs text-indigo-600/70 mt-0.5">Ajouter, supprimer ou modifier les couleurs</p>
+                 </div>
+               </div>
+               <Icon name="ChevronRight" className="text-indigo-400 text-lg"/>
+            </button>
+
+            <div className="mb-10">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center"><Icon name="Zap" className="mr-2" /> Ma Checklist Fixe</h3>
+              <div className="bg-white rounded-3xl p-4 shadow-sm border border-slate-50 space-y-4">
+                {fixedExpenses.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {fixedExpenses.map(fe => (
+                       <div key={fe.id} className="flex justify-between items-center border-b border-slate-50 pb-2">
+                         <div>
+                           <p className="font-bold text-slate-800 text-sm">{fe.name}</p>
+                           <p className="text-xs text-slate-400">{activeTemplate.find(c => c.id === fe.categoryId)?.name || 'Enveloppe introuvable'}</p>
+                         </div>
+                         <div className="flex items-center space-x-3">
+                           <span className="font-bold text-slate-900">${(Number(fe.amount) || 0).toFixed(2)}</span>
+                           <button onClick={() => setFixedExpenses(prev => prev.filter(f => f.id !== fe.id))} className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg"><Icon name="Trash2" className="text-sm"/></button>
+                         </div>
+                       </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                   <p className="text-xs font-bold text-slate-500 mb-2 uppercase">Ajouter un abonnement/loyer</p>
+                   <input placeholder="Nom (ex: Netflix)" value={feName} onChange={(e) => setFeName(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium outline-none mb-2 focus:border-indigo-500"/>
+                   <div className="flex space-x-2 mb-2">
+                      <div className="relative w-1/3">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-medium">$</span>
+                        <input type="number" inputMode="decimal" placeholder="0.00" value={feAmount} onChange={(e) => setFeAmount(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-6 pr-2 text-sm font-bold outline-none focus:border-indigo-500"/>
+                      </div>
+                      <select value={feCategory} onChange={(e) => setFeCategory(e.target.value)} className="w-2/3 bg-white border border-slate-200 rounded-xl py-2 px-2 text-sm font-medium outline-none focus:border-indigo-500">
+                        {activeTemplate.filter(c => c.type !== 'Épargne').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                   </div>
+                   <button onClick={handleAddFixedExpense} className="w-full bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-sm hover:bg-slate-300 active:scale-95 transition-all">Ajouter à la liste</button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mb-10">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Objectifs de Patrimoine</h3>
+              <div className="bg-white rounded-3xl p-2 shadow-sm border border-slate-50">
+                <div className="p-4 flex justify-between items-center border-b border-slate-50">
+                   <div className="flex items-center"><Icon name="ShieldCheck" className="text-violet-500 mr-2 text-lg"/><span className="font-medium text-slate-700 text-sm">Urgence</span></div>
+                   <div className="relative w-28">
+                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                     <input type="number" inputMode="decimal" value={localGoals[urgenceCatId] || 10000} onChange={(e) => setLocalGoals({...localGoals, [urgenceCatId]: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-1.5 pl-6 pr-2 text-right font-semibold text-slate-900 outline-none focus:border-indigo-500 focus:bg-white" />
+                   </div>
+                </div>
+                <div className="p-4 flex justify-between items-center">
+                   <div className="flex items-center"><Icon name="TrendingUp" className="text-emerald-500 mr-2 text-lg"/><span className="font-medium text-slate-700 text-sm">Investissements</span></div>
+                   <div className="relative w-28">
+                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                     <input type="number" inputMode="decimal" value={localGoals[investCatId] || 25000} onChange={(e) => setLocalGoals({...localGoals, [investCatId]: e.target.value})} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-1.5 pl-6 pr-2 text-right font-semibold text-slate-900 outline-none focus:border-indigo-500 focus:bg-white" />
+                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-10">
+              <div className="flex justify-between items-end mb-4">
+                <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Modèle de Paie</h3>
+              </div>
+              <div className="bg-white rounded-3xl p-2 shadow-sm border border-slate-50">
+                {activeTemplate.map((cat, index) => (
+                  <div key={cat.id} className={`p-4 flex justify-between items-center ${index !== activeTemplate.length - 1 ? 'border-b border-slate-50' : ''}`}>
+                    <span className="font-medium text-slate-700 text-sm flex-1">{cat.name}</span>
+                    <div className="relative w-24">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">$</span>
+                      <input 
+                        type="number" inputMode="decimal" value={localTemplate[cat.id] === undefined ? '' : localTemplate[cat.id]}
+                        onChange={(e) => setLocalTemplate({...localTemplate, [cat.id]: e.target.value})}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-1.5 pl-6 pr-2 text-right font-semibold text-slate-900 outline-none focus:border-emerald-500 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-50 mb-8">
+              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-4"><Icon name="Download" className="text-lg" /></div>
+              <h3 className="font-bold text-slate-900 mb-2">Export Excel / CSV</h3>
+              <p className="text-slate-500 text-sm leading-relaxed mb-6">Récupère tout ton historique pour l'analyser sur ordinateur.</p>
+              <button onClick={handleExportCSV} className="w-full bg-slate-100 text-slate-900 font-semibold py-3.5 rounded-2xl hover:bg-slate-200 transition-colors active:scale-[0.98]">
+                Télécharger le .csv
+              </button>
+            </div>
+          </div>
+        );
+      };
+
+      const safeAreaStyle = { paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' };
+
+      return (
+        <div className="h-[100dvh] w-full bg-[#F7F7F9] flex justify-center font-sans antialiased text-slate-900 selection:bg-indigo-100 overflow-hidden">
+          <div className="w-full max-w-md relative h-full shadow-2xl shadow-slate-200/50 bg-[#F7F7F9] overflow-hidden flex flex-col">
+            
+            <main className="flex-1 overflow-y-auto hide-scrollbar pb-24">
+              {activeTab === 'dashboard' && <DashboardView />}
+              {activeTab === 'coach' && <CoachView />}
+              {activeTab === 'add' && <AddTransactionView />}
+              {activeTab === 'settings' && <SettingsView />}
+            </main>
+
+            <div className="absolute bottom-0 left-0 right-0 z-50 px-6 pointer-events-none" style={safeAreaStyle}>
+              <div className="bg-white/90 backdrop-blur-xl border border-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-[2rem] px-6 py-4 flex justify-between items-center mb-4 pointer-events-auto">
+                <button onClick={() => setActiveTab('dashboard')} className={`transition-all duration-300 ${activeTab === 'dashboard' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <Icon name="LayoutGrid" className="text-2xl" />
+                </button>
+                <button onClick={() => setActiveTab('coach')} className={`transition-all duration-300 ${activeTab === 'coach' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <Icon name="Sparkles" className="text-2xl" />
+                </button>
+                <button onClick={() => { setActiveTab('add'); setViewDate(new Date()); }} className="bg-slate-900 text-white rounded-full p-4 shadow-lg shadow-slate-900/30 hover:bg-slate-800 transition-transform active:scale-95 -mt-12 border-[6px] border-[#F7F7F9]">
+                  <Icon name="Plus" className="text-2xl" />
+                </button>
+                <button onClick={() => setActiveTab('settings')} className={`transition-all duration-300 ${activeTab === 'settings' ? 'text-slate-900 scale-110' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <Icon name="MoreHorizontal" className="text-2xl" />
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
