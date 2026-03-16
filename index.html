@@ -63,9 +63,13 @@
     const { useState, useEffect, useRef, useCallback } = React;
 
     const Icon = ({ name, className = "", strokeWidth = 2 }) => {
-      const icon = lucide.icons[name];
-      if (!icon) return null;
-      return <span dangerouslySetInnerHTML={{ __html: icon.toSvg({ class: className, 'stroke-width': strokeWidth }) }} style={{ display: 'contents' }} />;
+      const nodes = (lucide.icons || lucide)[name];
+      if (!nodes || !Array.isArray(nodes)) return null;
+      const inner = nodes.map(([tag, attrs]) =>
+        `<${tag} ${Object.entries(attrs||{}).map(([k,v])=>`${k}="${v}"`).join(' ')}/>`
+      ).join('');
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" class="${className}">${inner}</svg>`;
+      return <span dangerouslySetInnerHTML={{ __html: svg }} style={{ display: 'contents' }} />;
     };
 
     const DEFAULT_CATEGORIES = [
