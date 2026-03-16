@@ -13,6 +13,36 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    // ═══════════════════════════════════════════════════════════
+    //  CONFIGURATION FIREBASE — remplis avec tes propres valeurs
+    //  1. Va sur https://console.firebase.google.com
+    //  2. Crée un projet → ajoute une app Web
+    //  3. Active Authentication (Email/Mot de passe)
+    //  4. Active Firestore Database
+    //  5. Copie ta config ci-dessous
+    // ═══════════════════════════════════════════════════════════
+    const FIREBASE_CONFIG = {
+      apiKey:            "REMPLACE_MOI",
+      authDomain:        "REMPLACE_MOI.firebaseapp.com",
+      projectId:         "REMPLACE_MOI",
+      storageBucket:     "REMPLACE_MOI.appspot.com",
+      messagingSenderId: "REMPLACE_MOI",
+      appId:             "REMPLACE_MOI"
+    };
+
+    window.USE_FIREBASE = FIREBASE_CONFIG.apiKey !== "REMPLACE_MOI";
+
+    if (window.USE_FIREBASE) {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      window.fbAuth = firebase.auth();
+      window.fbDb   = firebase.firestore();
+    }
+  </script>
   <style>
     :root {
       --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -359,6 +389,100 @@
     };
 
     // ══════════════════════════════════════════════════════════════════
+    //  AUTH SCREEN
+    // ══════════════════════════════════════════════════════════════════
+    const AuthScreen = () => {
+      const [mode, setMode]       = useState('login');
+      const [email, setEmail]     = useState('');
+      const [password, setPassword] = useState('');
+      const [err, setErr]         = useState('');
+      const [loading, setLoading] = useState(false);
+
+      const MSG = {
+        'auth/invalid-email':        'Email invalide.',
+        'auth/wrong-password':       'Mot de passe incorrect.',
+        'auth/invalid-credential':   'Email ou mot de passe incorrect.',
+        'auth/user-not-found':       'Aucun compte avec cet email.',
+        'auth/email-already-in-use': 'Cet email est déjà utilisé.',
+        'auth/weak-password':        'Mot de passe trop court (6 caractères min).',
+      };
+
+      const submit = async (e) => {
+        e.preventDefault();
+        setErr(''); setLoading(true);
+        try {
+          if (mode === 'login') {
+            await window.fbAuth.signInWithEmailAndPassword(email, password);
+          } else {
+            await window.fbAuth.createUserWithEmailAndPassword(email, password);
+          }
+        } catch (ex) {
+          setErr(MSG[ex.code] || ex.message);
+        }
+        setLoading(false);
+      };
+
+      const resetPassword = async () => {
+        if (!email) { setErr('Entre ton email pour réinitialiser.'); return; }
+        try {
+          await window.fbAuth.sendPasswordResetEmail(email);
+          setErr('Email de réinitialisation envoyé !');
+        } catch (ex) { setErr(MSG[ex.code] || ex.message); }
+      };
+
+      return (
+        <div className="min-h-screen bg-[#F7F7F9] flex flex-col items-center justify-center px-6">
+          <div className="w-full max-w-sm">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Icon name="Wallet" className="w-8 h-8 text-white"/>
+              </div>
+              <h1 className="text-2xl font-black text-slate-900">Mon Budget</h1>
+              <p className="text-slate-400 text-sm mt-1">Tes finances, synchronisées partout</p>
+            </div>
+
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+              <div className="bg-slate-100 p-1 rounded-2xl flex gap-1 mb-5">
+                {['login','signup'].map(m => (
+                  <button key={m} onClick={() => { setMode(m); setErr(''); }}
+                    className={`flex-1 py-2 rounded-xl text-[11px] uppercase tracking-wide font-bold transition-all ${mode===m?'bg-white shadow text-slate-900':'text-slate-400'}`}>
+                    {m === 'login' ? 'Connexion' : 'Créer un compte'}
+                  </button>
+                ))}
+              </div>
+
+              <form onSubmit={submit} className="space-y-3">
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="Email" required autoComplete="email"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-800 font-medium outline-none focus:border-slate-400 placeholder-slate-300"/>
+                <input
+                  type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="Mot de passe" required minLength={6} autoComplete={mode==='login'?'current-password':'new-password'}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-800 font-medium outline-none focus:border-slate-400 placeholder-slate-300"/>
+
+                {err && <p className={`text-sm font-medium text-center ${err.includes('envoyé') ? 'text-emerald-600' : 'text-rose-600'}`}>{err}</p>}
+
+                <button type="submit" disabled={loading}
+                  className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-2xl shadow-lg active:scale-[0.98] transition-all disabled:opacity-50">
+                  {loading ? 'Chargement…' : mode==='login' ? 'Se connecter' : 'Créer mon compte'}
+                </button>
+              </form>
+
+              {mode === 'login' && (
+                <button onClick={resetPassword} className="w-full mt-3 text-xs text-slate-400 hover:text-slate-600 font-medium">
+                  Mot de passe oublié ?
+                </button>
+              )}
+            </div>
+
+            <p className="text-center text-xs text-slate-400 mt-6">Tes données sont chiffrées et privées.</p>
+          </div>
+        </div>
+      );
+    };
+
+    // ══════════════════════════════════════════════════════════════════
     //  APP
     // ══════════════════════════════════════════════════════════════════
     function App() {
@@ -377,7 +501,57 @@
       const [userGoals,        setUserGoals]        = useState(() => ls.get('fintech_goals', { '10': 10000, '11': 25000 }));
       const [fixedExpenses,    setFixedExpenses]    = useState(() => ls.get('fintech_fixed_expenses', []));
 
-      // Persist on every change
+      // ── FIREBASE AUTH & SYNC ───────────────────────────────────
+      const [user,      setUser]      = useState(null);
+      const [authReady, setAuthReady] = useState(!window.USE_FIREBASE);
+      const [syncing,   setSyncing]   = useState(false);
+      const userRef      = useRef(null);
+      const dataReadyRef = useRef(!window.USE_FIREBASE);
+      const saveTimerRef = useRef(null);
+
+      useEffect(() => {
+        if (!window.USE_FIREBASE) return;
+        return window.fbAuth.onAuthStateChanged(async (u) => {
+          userRef.current = u;
+          setUser(u);
+          if (u) {
+            setSyncing(true);
+            try {
+              const doc = await window.fbDb.collection('users').doc(u.uid).get();
+              if (doc.exists) {
+                const d = doc.data();
+                if (d.categories)    setCustomCategories(d.categories);
+                if (d.transactions)  setTransactions([...d.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)));
+                if (d.allocations)   setAllocations(d.allocations);
+                if (d.transfers)     setTransfers(d.transfers);
+                if (d.template)      setUserTemplate(d.template);
+                if (d.goals)         setUserGoals(d.goals);
+                if (d.fixedExpenses) setFixedExpenses(d.fixedExpenses);
+              }
+            } catch (e) { console.error('Firestore load:', e); }
+            setSyncing(false);
+            dataReadyRef.current = true;
+          } else {
+            dataReadyRef.current = false;
+          }
+          setAuthReady(true);
+        });
+      }, []);
+
+      // Debounced Firestore save (fires only when data actually changes)
+      useEffect(() => {
+        if (!window.USE_FIREBASE || !userRef.current || !dataReadyRef.current) return;
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+          if (!userRef.current) return;
+          window.fbDb.collection('users').doc(userRef.current.uid).set({
+            categories: customCategories, transactions, allocations,
+            transfers, template: userTemplate, goals: userGoals, fixedExpenses,
+          }).catch(console.error);
+        }, 2000);
+      }, [customCategories, transactions, allocations, transfers, userTemplate, userGoals, fixedExpenses]);
+
+      // Persist locally on every change (offline cache)
       useEffect(() => ls.set('fintech_categories',     customCategories), [customCategories]);
       useEffect(() => ls.set('fintech_transactions',   transactions),     [transactions]);
       useEffect(() => ls.set('fintech_allocations',    allocations),      [allocations]);
@@ -385,6 +559,14 @@
       useEffect(() => ls.set('fintech_template',       userTemplate),     [userTemplate]);
       useEffect(() => ls.set('fintech_goals',          userGoals),        [userGoals]);
       useEffect(() => ls.set('fintech_fixed_expenses', fixedExpenses),    [fixedExpenses]);
+
+      // Show auth screen if Firebase is configured but user not logged in
+      if (!authReady) return (
+        <div className="min-h-screen bg-[#F7F7F9] flex items-center justify-center">
+          <div className="text-slate-400 text-sm">Chargement…</div>
+        </div>
+      );
+      if (window.USE_FIREBASE && !user) return <AuthScreen/>;
 
       // Fix string splits
       useEffect(() => {
@@ -1071,6 +1253,32 @@
               <button onClick={exportCSV} className="w-full bg-slate-100 text-slate-800 font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-200 active:scale-[0.98]"><Icon name="FileText" className="w-4 h-4"/>Exporter en CSV</button>
               <button onClick={exportJSON} className="w-full bg-indigo-50 text-indigo-800 font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-indigo-100 active:scale-[0.98]"><Icon name="Download" className="w-4 h-4"/>Sauvegarde JSON complète</button>
             </div>
+
+            {/* Compte Firebase */}
+            {window.USE_FIREBASE && user && (
+              <>
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Compte</h3>
+                <div className="bg-white rounded-2xl p-4 border border-slate-50 shadow-sm mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <Icon name="Cloud" className="w-4 h-4 text-emerald-600"/>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-700">Synchronisé</p>
+                        <p className="text-[11px] text-slate-400 truncate max-w-[180px]">{user.email}</p>
+                      </div>
+                    </div>
+                    {syncing && <span className="text-[10px] text-slate-400 animate-pulse font-medium">Sync…</span>}
+                  </div>
+                  <button
+                    onClick={() => { if (window.confirm('Se déconnecter ?')) window.fbAuth.signOut(); }}
+                    className="w-full bg-rose-50 text-rose-700 font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 active:scale-[0.98]">
+                    <Icon name="LogOut" className="w-4 h-4"/>Se déconnecter
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         );
       };
